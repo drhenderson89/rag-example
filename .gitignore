@@ -2,3 +2,6 @@
 /__pycache__/
 /ingest/*
 /database/*
+db.sqlite3
+/ragapp/__pycache__
+/ragproject/__pycache__

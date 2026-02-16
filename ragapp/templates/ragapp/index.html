@@ -1,0 +1,600 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RAG Chat Interface</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .header {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            margin-bottom: 20px;
+        }
+
+        .header h1 {
+            color: #667eea;
+            margin-bottom: 10px;
+        }
+
+        .status-info {
+            display: flex;
+            gap: 20px;
+            flex-wrap: wrap;
+            font-size: 14px;
+            color: #666;
+        }
+
+        .status-badge {
+            background: #f0f0f0;
+            padding: 5px 10px;
+            border-radius: 5px;
+        }
+
+        .main-content {
+            display: grid;
+            grid-template-columns: 1fr 300px;
+            gap: 20px;
+        }
+
+        .chat-container {
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            display: flex;
+            flex-direction: column;
+            height: 600px;
+        }
+
+        .messages {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px;
+        }
+
+        .message {
+            margin-bottom: 15px;
+            padding: 15px;
+            border-radius: 10px;
+            max-width: 80%;
+        }
+
+        .message.user {
+            background: #667eea;
+            color: white;
+            margin-left: auto;
+        }
+
+        .message.assistant {
+            background: #f0f0f0;
+            color: #333;
+        }
+
+        .message.system {
+            background: #fff3cd;
+            color: #856404;
+            margin: 0 auto;
+            text-align: center;
+            font-size: 14px;
+        }
+
+        .input-area {
+            padding: 20px;
+            border-top: 1px solid #eee;
+        }
+
+        .input-group {
+            display: flex;
+            gap: 10px;
+        }
+
+        input[type="text"] {
+            flex: 1;
+            padding: 12px;
+            border: 2px solid #eee;
+            border-radius: 5px;
+            font-size: 14px;
+        }
+
+        input[type="text"]:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        button {
+            padding: 12px 24px;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: background 0.3s;
+        }
+
+        button:hover {
+            background: #5568d3;
+        }
+
+        button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+
+        .sidebar {
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            padding: 20px;
+        }
+
+        .sidebar h3 {
+            color: #667eea;
+            margin-bottom: 15px;
+        }
+
+        .upload-area {
+            border: 2px dashed #ccc;
+            border-radius: 5px;
+            padding: 20px;
+            text-align: center;
+            cursor: pointer;
+            transition: border-color 0.3s;
+        }
+
+        .upload-area:hover {
+            border-color: #667eea;
+        }
+
+        .upload-area.dragover {
+            border-color: #667eea;
+            background: #f0f0ff;
+        }
+
+        input[type="file"] {
+            display: none;
+        }
+
+        .file-info {
+            margin-top: 15px;
+            padding: 10px;
+            background: #f0f0f0;
+            border-radius: 5px;
+            font-size: 14px;
+        }
+
+        .clear-btn {
+            margin-top: 15px;
+            width: 100%;
+            padding: 10px;
+            background: #dc3545;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+
+        .clear-btn:hover {
+            background: #c82333;
+        }
+
+        .clear-btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(255,255,255,.3);
+            border-radius: 50%;
+            border-top-color: #fff;
+            animation: spin 1s ease-in-out infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        @media (max-width: 768px) {
+            .main-content {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🤖 RAG Chat Interface</h1>
+            <div class="status-info">
+                <div class="status-badge">Model: {{ model_name }}</div>
+                <div class="status-badge" id="doc-count">Documents: {{ document_count }}</div>
+                <div class="status-badge" id="chunks-count" style="display:none;">Chunks: 0</div>
+                <div class="status-badge" id="languages" style="display:none;"></div>
+            </div>
+        </div>
+
+        <div class="main-content">
+            <div class="chat-container">
+                <div class="messages" id="messages">
+                    <div class="message system">
+                        Welcome! Upload documents to enable RAG, or just start chatting.
+                    </div>
+                </div>
+                <div class="input-area">
+                    <div class="input-group">
+                        <input 
+                            type="text" 
+                            id="user-input" 
+                            placeholder="Type your question here..."
+                            onkeypress="handleKeyPress(event)"
+                        >
+                        <button onclick="sendQuery()" id="send-btn">Send</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="sidebar">
+                <h3>📄 Upload Documents</h3>
+                <div class="upload-area" id="upload-area" onclick="document.getElementById('file-input').click()">
+                    <p>Click to upload or drag & drop</p>
+                    <p style="font-size: 12px; color: #999; margin-top: 10px;">
+                        Supports: PDF, DOCX, CSV, TXT<br>
+                        Multiple files supported
+                    </p>
+                </div>
+                <input type="file" id="file-input" accept=".pdf,.docx,.csv,.txt" multiple onchange="uploadFile()">
+                <div id="upload-status"></div>
+                
+                <button class="clear-btn" onclick="confirmClearDatabase()" id="clear-btn">
+                    🗑️ Clear Database
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Prevent default drag and drop behavior globally
+        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+            document.body.addEventListener(eventName, preventDefaults, false);
+        });
+
+        function preventDefaults(e) {
+            e.preventDefault();
+            e.stopPropagation();
+        }
+
+        // Drag and drop functionality for upload area
+        const uploadArea = document.getElementById('upload-area');
+        
+        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+            uploadArea.addEventListener(eventName, preventDefaults, false);
+        });
+
+        ['dragenter', 'dragover'].forEach(eventName => {
+            uploadArea.addEventListener(eventName, () => {
+                uploadArea.classList.add('dragover');
+            }, false);
+        });
+
+        ['dragleave', 'drop'].forEach(eventName => {
+            uploadArea.addEventListener(eventName, () => {
+                uploadArea.classList.remove('dragover');
+            }, false);
+        });
+
+        uploadArea.addEventListener('drop', (e) => {
+            const dt = e.dataTransfer;
+            const files = dt.files;
+            if (files.length > 0) {
+                uploadMultipleFiles(Array.from(files));
+            }
+        }, false);
+
+        // Upload multiple files function
+        async function uploadMultipleFiles(files) {
+            const uploadStatus = document.getElementById('upload-status');
+            
+            uploadStatus.innerHTML = `<div class="file-info">Uploading ${files.length} file(s)...</div>`;
+            
+            let successCount = 0;
+            let failCount = 0;
+            
+            for (let i = 0; i < files.length; i++) {
+                const file = files[i];
+                uploadStatus.innerHTML = `<div class="file-info">Uploading ${i + 1}/${files.length}: ${file.name}...</div>`;
+                
+                try {
+                    const result = await uploadSingleFile(file);
+                    if (result.success) {
+                        successCount++;
+                    } else {
+                        failCount++;
+                    }
+                } catch (error) {
+                    failCount++;
+                    addMessage(`Failed to upload ${file.name}: ${error.message}`, 'system');
+                }
+            }
+            
+            // Show final summary
+            let summaryColor = successCount > 0 ? '#d4edda' : '#f8d7da';
+            let summaryTextColor = successCount > 0 ? '#155724' : '#721c24';
+            
+            uploadStatus.innerHTML = `<div class="file-info" style="background: ${summaryColor}; color: ${summaryTextColor};">
+                Completed: ${successCount} succeeded, ${failCount} failed
+            </div>`;
+            
+            addMessage(`Upload complete: ${successCount} file(s) succeeded, ${failCount} failed`, 'system');
+            
+            setTimeout(() => {
+                uploadStatus.innerHTML = '';
+            }, 5000);
+        }
+
+        // Upload single file function
+        async function uploadSingleFile(file) {
+            const formData = new FormData();
+            formData.append('document', file);
+            
+            const response = await fetch('/upload/', {
+                method: 'POST',
+                body: formData,
+                headers: {
+                    'X-CSRFToken': getCookie('csrftoken')
+                }
+            });
+            
+            // Check if response is actually JSON
+            const contentType = response.headers.get('content-type');
+            if (!contentType || !contentType.includes('application/json')) {
+                throw new Error('Server returned non-JSON response');
+            }
+            
+            const data = await response.json();
+            
+            if (data.success) {
+                document.getElementById('doc-count').textContent = 'Documents: ' + data.document_count;
+                
+                // Update metadata stats if available
+                if (data.db_stats) {
+                    updateDatabaseStats(data.db_stats);
+                }
+                
+                // Add appropriate message to chat
+                if (data.message_type === 'warning') {
+                    addMessage('⚠️ ' + data.message, 'system');
+                } else if (data.duplicates_skipped > 0) {
+                    addMessage(`${file.name}: ${data.chunks_added} new chunks, ${data.duplicates_skipped} duplicates skipped`, 'system');
+                } else {
+                    addMessage(`${file.name}: uploaded successfully (${data.chunks_added} chunks)`, 'system');
+                }
+            }
+            
+            return data;
+        }
+
+        // Upload file function (for file input)
+        async function uploadFile() {
+            const fileInput = document.getElementById('file-input');
+            const uploadStatus = document.getElementById('upload-status');
+            
+            if (fileInput.files.length === 0) return;
+            
+            const files = Array.from(fileInput.files);
+            fileInput.value = '';
+            
+            if (files.length === 1) {
+                const file = files[0];
+                uploadStatus.innerHTML = '<div class="file-info">Uploading ' + file.name + '...</div>';
+                
+                try {
+                    const data = await uploadSingleFile(file);
+                    
+                    if (data.success) {
+                        // Style based on message type
+                        let bgColor, textColor;
+                        if (data.message_type === 'warning') {
+                            bgColor = '#fff3cd';
+                            textColor = '#856404';
+                        } else if (data.message_type === 'info') {
+                            bgColor = '#d1ecf1';
+                            textColor = '#0c5460';
+                        } else {
+                            bgColor = '#d4edda';
+                            textColor = '#155724';
+                        }
+                        
+                        uploadStatus.innerHTML = `<div class="file-info" style="background: ${bgColor}; color: ${textColor};">` + 
+                            data.message + '</div>';
+                    } else {
+                        uploadStatus.innerHTML = '<div class="file-info" style="background: #f8d7da; color: #721c24;">' + 
+                            data.message + '</div>';
+                    }
+                    
+                    setTimeout(() => {
+                        uploadStatus.innerHTML = '';
+                    }, 5000);
+                } catch (error) {
+                    uploadStatus.innerHTML = '<div class="file-info" style="background: #f8d7da; color: #721c24;">Error: ' + 
+                        error.message + '</div>';
+                }
+            } else {
+                // Multiple files selected
+                uploadMultipleFiles(files);
+            }
+        }
+
+        // Chat functionality
+        function handleKeyPress(event) {
+            if (event.key === 'Enter') {
+                sendQuery();
+            }
+        }
+
+        async function sendQuery() {
+            const input = document.getElementById('user-input');
+            const sendBtn = document.getElementById('send-btn');
+            const query = input.value.trim();
+            
+            if (!query) return;
+            
+            // Add user message
+            addMessage(query, 'user');
+            input.value = '';
+            
+            // Disable input
+            sendBtn.disabled = true;
+            sendBtn.innerHTML = '<span class="loading"></span>';
+            
+            try {
+                const formData = new FormData();
+                formData.append('query', query);
+                
+                const response = await fetch('/query/', {
+                    method: 'POST',
+                    body: formData,
+                    headers: {
+                        'X-CSRFToken': getCookie('csrftoken')
+                    }
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    addMessage(data.response, 'assistant');
+                    if (data.used_rag) {
+                        addMessage('Response generated using RAG context', 'system');
+                    }
+                } else {
+                    addMessage('Error: ' + data.message, 'system');
+                }
+            } catch (error) {
+                addMessage('Error: ' + error.message, 'system');
+            } finally {
+                sendBtn.disabled = false;
+                sendBtn.innerHTML = 'Send';
+            }
+        }
+
+        function addMessage(text, type) {
+            const messagesDiv = document.getElementById('messages');
+            const messageDiv = document.createElement('div');
+            messageDiv.className = 'message ' + type;
+            messageDiv.textContent = text;
+            messagesDiv.appendChild(messageDiv);
+            messagesDiv.scrollTop = messagesDiv.scrollHeight;
+        }
+
+        function getCookie(name) {
+            let cookieValue = null;
+            if (document.cookie && document.cookie !== '') {
+                const cookies = document.cookie.split(';');
+                for (let i = 0; i < cookies.length; i++) {
+                    const cookie = cookies[i].trim();
+                    if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                        break;
+                    }
+                }
+            }
+            return cookieValue;
+        }
+
+        function updateDatabaseStats(stats) {
+            // Update chunks count
+            const chunksEl = document.getElementById('chunks-count');
+            if (stats.total_chunks > 0) {
+                chunksEl.textContent = 'Chunks: ' + stats.total_chunks;
+                chunksEl.style.display = 'block';
+            }
+            
+            // Update languages
+            const langsEl = document.getElementById('languages');
+            if (stats.languages && Object.keys(stats.languages).length > 0) {
+                const langList = Object.entries(stats.languages)
+                    .map(([lang, count]) => `${lang}: ${count}`)
+                    .join(', ');
+                langsEl.textContent = 'Languages: ' + langList;
+                langsEl.style.display = 'block';
+            }
+        }
+
+        // Load database stats on page load
+        fetch('/status/')
+            .then(response => response.json())
+            .then(data => {
+                if (data.total_chunks !== undefined) {
+                    updateDatabaseStats(data);
+                }
+            })
+            .catch(error => console.log('Could not load stats:', error));
+
+        // Clear database functionality
+        function confirmClearDatabase() {
+            if (confirm('⚠️ WARNING: This will permanently delete all uploaded documents and chunks from the database.\n\nAre you sure you want to continue?')) {
+                clearDatabase();
+            }
+        }
+
+        async function clearDatabase() {
+            const clearBtn = document.getElementById('clear-btn');
+            clearBtn.disabled = true;
+            clearBtn.textContent = 'Clearing...';
+
+            try {
+                const response = await fetch('/clear/', {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRFToken': getCookie('csrftoken')
+                    }
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    addMessage('Database cleared successfully!', 'system');
+                    document.getElementById('doc-count').textContent = 'Documents: 0';
+                    
+                    // Hide metadata badges
+                    document.getElementById('chunks-count').style.display = 'none';
+                    document.getElementById('languages').style.display = 'none';
+                    
+                    alert('✅ Database cleared successfully!');
+                } else {
+                    addMessage('Failed to clear database: ' + data.message, 'system');
+                    alert('❌ Failed to clear database: ' + data.message);
+                }
+            } catch (error) {
+                addMessage('Error clearing database: ' + error.message, 'system');
+                alert('❌ Error: ' + error.message);
+            } finally {
+                clearBtn.disabled = false;
+                clearBtn.textContent = '🗑️ Clear Database';
+            }
+        }
+    </script>
+</body>
+</html>

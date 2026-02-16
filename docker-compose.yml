@@ -1,0 +1,44 @@
+version: '3.8'
+
+services:
+  # Ollama service for LLM inference
+  ollama:
+    image: ollama/ollama:latest
+    container_name: ollama
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+      - ./ollama-init.sh:/ollama-init.sh
+    entrypoint: ["/bin/bash", "/ollama-init.sh"]
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "ollama list || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  # Django web application
+  web:
+    image: rag_django:1.0.0
+    container_name: rag_django
+    command: python manage.py runserver 0.0.0.0:8000
+    volumes:
+      - .:/app
+      - ./database:/app/database
+      - ./ingest:/app/ingest
+    ports:
+      - "8000:8000"
+    environment:
+      - OLLAMA_ADDRESS=http://ollama:11434
+      - MODEL_NAME=llama3.2
+      - INGESTION_FOLDER=/app/ingest
+      - DATABASE_FOLDER=/app/database
+    depends_on:
+      ollama:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  ollama_data:
