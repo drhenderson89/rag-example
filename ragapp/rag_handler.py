@@ -14,6 +14,7 @@ import logging
 try:
     from langchain_experimental.text_splitter import SemanticChunker
     SEMANTIC_CHUNKER_AVAILABLE = True
+    logging.info("langchain_experimental is available, semantic chunking enabled")
 except ImportError:
     SEMANTIC_CHUNKER_AVAILABLE = False
     logging.warning("langchain_experimental not available, semantic chunking will fall back to recursive splitting")
@@ -22,6 +23,7 @@ except ImportError:
 try:
     from langdetect import detect, LangDetectException
     LANGDETECT_AVAILABLE = True
+    logging.info("langdetect is available, language detection enabled")
 except ImportError:
     LANGDETECT_AVAILABLE = False
     logging.warning("langdetect not available, language detection will be skipped")

@@ -50,7 +50,10 @@ docker-compose up
 
 The application will be available at **http://localhost:8000**
 
-> **Note**: On first startup, Ollama will automatically download the `llama3.2` model (~2GB). This may take several minutes depending on your connection.
+> **Note**: On first startup:
+> - Database migrations are automatically applied
+> - Ollama will automatically download the `llama3.2` model (~2GB)
+> - Initial startup may take several minutes depending on your connection
 
 > **💡 Tip for Limited Hardware**: If you have less than 8GB RAM, modify `ollama-init.sh` to use `llama3.2:1b` (only 1.3GB) before starting. See [Using Smaller Models](#using-smaller-models-for-limited-hardware).
 
@@ -80,7 +83,12 @@ ollama serve
 ollama pull llama3.2
 ```
 
-### 3. Run Django Development Server
+### 3. Initialize Django Database
+```bash
+python manage.py migrate
+```
+
+### 4. Run Django Development Server
 ```bash
 python manage.py runserver
 ```

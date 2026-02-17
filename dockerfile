@@ -19,17 +19,15 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy project files
 COPY . .
 
+# Copy and make entrypoint script executable
+COPY entrypoint.sh /app/entrypoint.sh
+RUN chmod +x /app/entrypoint.sh
+
 # Create necessary directories
 RUN mkdir -p /app/ingest /app/database /app/staticfiles
-
-# Run migrations (if needed)
-RUN python manage.py migrate || true
-
-# Collect static files
-RUN python manage.py collectstatic --noinput || true
 
 # Expose port
 EXPOSE 8000
 
-# Run the application
-CMD ["python", "manage.py", "runserver", "0.0.0.0:8000"]
+# Run the application with entrypoint script
+CMD ["/app/entrypoint.sh"]
